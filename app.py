@@ -1,361 +1,168 @@
 import streamlit as st
 
 from crew import build_research_crew
+from tools.research_tools import (
+    AcademicSearchTool,
+    WebResearchTool,
+)
 
 
-# ============================================================
-# PAGE CONFIG
-# ============================================================
+# =========================================================
+# PAGE CONFIGURATION
+# =========================================================
 
 st.set_page_config(
     page_title="ResearchLab AI",
-    page_icon="✦",
+    page_icon="🔬",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 
-# ============================================================
+# =========================================================
 # CUSTOM CSS
-# Use st.html() instead of st.markdown() for HTML/CSS.
-# ============================================================
+# =========================================================
 
 st.html(
     """
     <style>
 
-    /* ======================================================
+    /* ================================
        GLOBAL
-       ====================================================== */
+       ================================ */
 
     .stApp {
         background:
             radial-gradient(
-                circle at 10% 0%,
-                rgba(99, 102, 241, 0.13),
-                transparent 30%
-            ),
-            radial-gradient(
-                circle at 90% 5%,
-                rgba(168, 85, 247, 0.10),
+                circle at 15% 10%,
+                rgba(99, 102, 241, 0.14),
                 transparent 28%
             ),
-            #080b12;
+            radial-gradient(
+                circle at 85% 15%,
+                rgba(168, 85, 247, 0.10),
+                transparent 25%
+            ),
+            linear-gradient(
+                135deg,
+                #070b17 0%,
+                #0b1020 45%,
+                #080d19 100%
+            );
     }
 
-    .block-container {
-        max-width: 1200px;
-        padding-top: 2rem;
-        padding-bottom: 4rem;
+    .main {
+        padding-top: 1.5rem;
     }
 
-    /* ======================================================
+    /* ================================
+       HIDE STREAMLIT DEFAULT ELEMENTS
+       ================================ */
+
+    #MainMenu {
+        visibility: hidden;
+    }
+
+    footer {
+        visibility: hidden;
+    }
+
+    header {
+        background: transparent !important;
+    }
+
+    /* ================================
        SIDEBAR
-       ====================================================== */
+       ================================ */
 
     section[data-testid="stSidebar"] {
-        background: #090c13;
-        border-right: 1px solid rgba(255,255,255,0.07);
+        background:
+            linear-gradient(
+                180deg,
+                #080d19 0%,
+                #0b1020 100%
+            );
+        border-right: 1px solid rgba(148, 163, 184, 0.10);
     }
 
-    /* ======================================================
-       HERO
-       ====================================================== */
+    section[data-testid="stSidebar"] > div {
+        padding-top: 2rem;
+    }
 
-    .rl-hero {
-        padding: 2.4rem 2.2rem;
-        border-radius: 26px;
+    /* ================================
+       INPUT
+       ================================ */
 
+    div[data-baseweb="textarea"] {
+        background: rgba(15, 23, 42, 0.75);
+        border-radius: 14px;
+    }
+
+    textarea {
+        color: #f8fafc !important;
+        font-size: 15px !important;
+        line-height: 1.6 !important;
+    }
+
+    /* ================================
+       BUTTON
+       ================================ */
+
+    div.stButton > button {
+        width: 100%;
+        border: 1px solid rgba(129, 140, 248, 0.35);
+        border-radius: 12px;
+        padding: 0.75rem 1.2rem;
+        font-weight: 700;
+        color: white;
         background:
             linear-gradient(
                 135deg,
-                rgba(99, 102, 241, 0.20),
-                rgba(168, 85, 247, 0.08)
+                #4f46e5,
+                #7c3aed
             );
-
-        border: 1px solid rgba(255,255,255,0.09);
-
         box-shadow:
-            0 20px 70px rgba(0,0,0,0.22);
-
-        margin-bottom: 1.8rem;
-    }
-
-    .rl-badge {
-        display: inline-block;
-
-        padding: 0.38rem 0.8rem;
-
-        border-radius: 999px;
-
-        background: rgba(255,255,255,0.07);
-
-        border: 1px solid rgba(255,255,255,0.10);
-
-        color: #c4b5fd;
-
-        font-size: 0.72rem;
-
-        font-weight: 800;
-
-        letter-spacing: 0.10em;
-
-        text-transform: uppercase;
-    }
-
-    .rl-title {
-        margin: 0.9rem 0 0.6rem 0;
-
-        color: #f8fafc;
-
-        font-size: 3.1rem;
-
-        line-height: 1.05;
-
-        font-weight: 850;
-
-        letter-spacing: -0.045em;
-    }
-
-    .rl-description {
-        margin: 0;
-
-        max-width: 750px;
-
-        color: #a7adbd;
-
-        font-size: 1.02rem;
-
-        line-height: 1.7;
-    }
-
-    /* ======================================================
-       SECTION LABEL
-       ====================================================== */
-
-    .rl-section-label {
-        margin-bottom: 0.65rem;
-
-        color: #8b93a7;
-
-        font-size: 0.70rem;
-
-        font-weight: 800;
-
-        letter-spacing: 0.13em;
-
-        text-transform: uppercase;
-    }
-
-    /* ======================================================
-       AGENT CARDS
-       ====================================================== */
-
-    .rl-agent {
-        padding: 1rem 1.15rem;
-
-        margin-bottom: 0.65rem;
-
-        border-radius: 16px;
-
-        background: rgba(255,255,255,0.035);
-
-        border: 1px solid rgba(255,255,255,0.065);
-
+            0 8px 30px rgba(79, 70, 229, 0.22);
         transition: all 0.2s ease;
     }
 
-    .rl-agent-active {
-        background:
-            linear-gradient(
-                135deg,
-                rgba(99,102,241,0.17),
-                rgba(168,85,247,0.08)
-            );
-
-        border-color: rgba(129,140,248,0.38);
-
-        box-shadow:
-            0 0 28px rgba(99,102,241,0.10);
-    }
-
-    .rl-agent-done {
-        border-color: rgba(52,211,153,0.20);
-    }
-
-    .rl-agent-row {
-        display: flex;
-
-        align-items: center;
-    }
-
-    .rl-agent-title {
-        color: #f3f4f6;
-
-        font-size: 0.94rem;
-
-        font-weight: 750;
-    }
-
-    .rl-agent-description {
-        margin-top: 0.28rem;
-
-        color: #858da0;
-
-        font-size: 0.78rem;
-    }
-
-    .rl-dot {
-        width: 9px;
-        height: 9px;
-
-        margin-right: 9px;
-
-        border-radius: 50%;
-
-        display: inline-block;
-
-        flex-shrink: 0;
-    }
-
-    .rl-dot-active {
-        background: #a78bfa;
-
-        box-shadow:
-            0 0 12px rgba(167,139,250,0.9);
-    }
-
-    .rl-dot-done {
-        background: #34d399;
-    }
-
-    .rl-dot-waiting {
-        background: #4b5563;
-    }
-
-    /* ======================================================
-       CURRENT AGENT
-       ====================================================== */
-
-    .rl-current {
-        padding: 1.25rem 1.35rem;
-
-        margin: 1.1rem 0 1.5rem 0;
-
-        border-radius: 18px;
-
-        background:
-            linear-gradient(
-                135deg,
-                rgba(99,102,241,0.12),
-                rgba(168,85,247,0.05)
-            );
-
-        border: 1px solid rgba(129,140,248,0.25);
-    }
-
-    .rl-current-label {
-        color: #a78bfa;
-
-        font-size: 0.68rem;
-
-        font-weight: 850;
-
-        letter-spacing: 0.13em;
-
-        text-transform: uppercase;
-    }
-
-    .rl-current-name {
-        margin-top: 0.28rem;
-
-        color: #f8fafc;
-
-        font-size: 1.25rem;
-
-        font-weight: 800;
-    }
-
-    .rl-current-message {
-        margin-top: 0.22rem;
-
-        color: #a7adbd;
-
-        font-size: 0.85rem;
-    }
-
-    /* ======================================================
-       BUTTON
-       ====================================================== */
-
-    .stButton > button {
-        width: 100%;
-
-        min-height: 3rem;
-
-        border-radius: 13px;
-
-        border: 1px solid rgba(129,140,248,0.35);
-
-        background:
-            linear-gradient(
-                135deg,
-                #6366f1,
-                #8b5cf6
-            );
-
-        color: white;
-
-        font-weight: 800;
-
-        transition:
-            transform 0.2s ease,
-            box-shadow 0.2s ease;
-    }
-
-    .stButton > button:hover {
+    div.stButton > button:hover {
+        border-color: rgba(165, 180, 252, 0.8);
         transform: translateY(-1px);
-
         box-shadow:
-            0 12px 32px rgba(99,102,241,0.25);
+            0 12px 35px rgba(79, 70, 229, 0.30);
     }
 
-    /* ======================================================
-       TEXT AREA
-       ====================================================== */
-
-    textarea {
-        border-radius: 15px !important;
+    div.stButton > button:disabled {
+        opacity: 0.5;
     }
 
-    /* ======================================================
-       REPORT
-       ====================================================== */
+    /* ================================
+       REPORT MARKDOWN
+       ================================ */
 
-    .rl-report-header {
-        padding: 1rem 1.15rem;
-
-        margin-bottom: 1rem;
-
-        border-radius: 15px;
-
-        background: rgba(255,255,255,0.035);
-
-        border: 1px solid rgba(255,255,255,0.07);
+    .report-container {
+        background: rgba(15, 23, 42, 0.58);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-top: 1.2rem;
+        box-shadow:
+            0 20px 60px rgba(0, 0, 0, 0.18);
     }
 
-    /* ======================================================
+    /* ================================
        MOBILE
-       ====================================================== */
+       ================================ */
 
-    @media (max-width: 700px) {
+    @media (max-width: 768px) {
 
-        .rl-title {
-            font-size: 2.2rem;
+        .hero-title {
+            font-size: 2rem !important;
         }
 
-        .rl-hero {
-            padding: 1.6rem;
+        .report-container {
+            padding: 1rem;
         }
 
     }
@@ -365,43 +172,52 @@ st.html(
 )
 
 
-# ============================================================
+# =========================================================
 # SESSION STATE
-# ============================================================
+# =========================================================
 
 if "research_result" not in st.session_state:
     st.session_state.research_result = None
 
-if "current_agent" not in st.session_state:
-    st.session_state.current_agent = "Waiting for research"
+if "research_question" not in st.session_state:
+    st.session_state.research_question = ""
 
-if "current_message" not in st.session_state:
-    st.session_state.current_message = "Ready to begin."
+if "research_running" not in st.session_state:
+    st.session_state.research_running = False
 
-if "completed_agents" not in st.session_state:
-    st.session_state.completed_agents = []
+if "agent_status" not in st.session_state:
+    st.session_state.agent_status = {
+        "Research Planner": "waiting",
+        "Academic Researcher": "waiting",
+        "Web Researcher": "waiting",
+        "Evidence Critic": "waiting",
+        "Research Writer": "waiting",
+    }
+
+if "agent_messages" not in st.session_state:
+    st.session_state.agent_messages = {}
 
 
-# ============================================================
+# =========================================================
 # AGENT DEFINITIONS
-# ============================================================
+# =========================================================
 
-agents = [
+AGENTS = [
     (
         "Research Planner",
         "Defines the research strategy",
     ),
     (
         "Academic Researcher",
-        "Searches scholarly literature",
+        "Analyzes scholarly evidence",
     ),
     (
         "Web Researcher",
-        "Investigates broader context",
+        "Analyzes broader web context",
     ),
     (
         "Evidence Critic",
-        "Challenges the evidence",
+        "Checks evidence quality and gaps",
     ),
     (
         "Research Writer",
@@ -410,95 +226,258 @@ agents = [
 ]
 
 
-# ============================================================
+# =========================================================
+# STATUS CALLBACK
+# =========================================================
+
+def update_agent(agent_name, message):
+
+    if agent_name not in st.session_state.agent_status:
+        return
+
+    # Mark current agent as active.
+    for name, _ in AGENTS:
+
+        if name == agent_name:
+            st.session_state.agent_status[name] = "active"
+        elif st.session_state.agent_status[name] == "active":
+            st.session_state.agent_status[name] = "done"
+
+    st.session_state.agent_messages[agent_name] = message
+
+
+# =========================================================
 # SIDEBAR
-# ============================================================
+# =========================================================
 
 with st.sidebar:
 
     st.html(
         """
-        <div style="padding:0.8rem 0 0.5rem 0;">
+        <div style="
+            padding: 0.5rem 0 1.5rem 0;
+        ">
 
             <div style="
-                font-size:1.25rem;
-                font-weight:800;
-                color:#f8fafc;
-                letter-spacing:-0.03em;
+                display:flex;
+                align-items:center;
+                gap:10px;
+                margin-bottom:8px;
             ">
-                ✦ ResearchLab AI
-            </div>
 
-            <div style="
-                color:#858da0;
-                font-size:0.82rem;
-                margin-top:0.25rem;
-            ">
-                Multi-agent research workspace
+                <div style="
+                    width:38px;
+                    height:38px;
+                    border-radius:11px;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    background:
+                        linear-gradient(
+                            135deg,
+                            #4f46e5,
+                            #9333ea
+                        );
+                    box-shadow:
+                        0 8px 25px
+                        rgba(79,70,229,0.3);
+                    font-size:19px;
+                ">
+                    🔬
+                </div>
+
+                <div>
+                    <div style="
+                        color:#f8fafc;
+                        font-size:18px;
+                        font-weight:800;
+                    ">
+                        ResearchLab
+                    </div>
+
+                    <div style="
+                        color:#64748b;
+                        font-size:11px;
+                    ">
+                        Multi-Agent AI
+                    </div>
+                </div>
+
             </div>
 
         </div>
         """
     )
 
-    st.divider()
+    st.markdown("---")
 
-    st.markdown("### Research Team")
+    st.markdown("### 🧠 Research Team")
 
     st.caption(
-        "Five specialized agents plan, research, "
-        "challenge and synthesize evidence."
+        "Five specialized AI agents collaborate "
+        "to analyze your research question."
     )
+
+    st.markdown("")
+
+    for agent_name, description in AGENTS:
+
+        status = st.session_state.agent_status.get(
+            agent_name,
+            "waiting"
+        )
+
+        if status == "active":
+            icon = "🟢"
+            status_text = "Working"
+
+        elif status == "done":
+            icon = "✅"
+            status_text = "Complete"
+
+        else:
+            icon = "○"
+            status_text = "Waiting"
+
+        st.markdown(
+            f"""
+            <div style="
+                padding:10px 12px;
+                margin-bottom:8px;
+                border-radius:12px;
+                background:rgba(15,23,42,0.65);
+                border:1px solid rgba(148,163,184,0.10);
+            ">
+
+                <div style="
+                    color:#e2e8f0;
+                    font-size:13px;
+                    font-weight:700;
+                ">
+                    {icon}&nbsp;&nbsp;{agent_name}
+                </div>
+
+                <div style="
+                    color:#64748b;
+                    font-size:11px;
+                    margin-top:3px;
+                ">
+                    {description}
+                </div>
+
+                <div style="
+                    color:#818cf8;
+                    font-size:10px;
+                    margin-top:5px;
+                ">
+                    {status_text}
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
+
+    st.markdown("### ⚙️ Pipeline")
+
+    st.caption(
+        "Research tools are executed once per question "
+        "to keep API usage controlled."
+    )
+
+    st.markdown("")
 
     st.markdown(
         """
-        **01** · Research Planner  
-        **02** · Academic Researcher  
-        **03** · Web Researcher  
-        **04** · Evidence Critic  
-        **05** · Research Writer
-        """
+        <div style="
+            color:#64748b;
+            font-size:11px;
+            line-height:1.6;
+        ">
+            <b style="color:#94a3b8;">
+                Model
+            </b><br>
+            GPT-OSS 120B via Groq
+            <br><br>
+
+            <b style="color:#94a3b8;">
+                Academic source
+            </b><br>
+            Crossref
+            <br><br>
+
+            <b style="color:#94a3b8;">
+                Web source
+            </b><br>
+            Wikipedia API
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    st.divider()
 
-    st.markdown("### Model")
-
-    st.code(
-        "openai/gpt-oss-120b",
-        language="text",
-    )
-
-    st.caption("Powered by Groq")
-
-    st.divider()
-
-    st.caption(
-        "ResearchLab AI · CrewAI + Groq + Streamlit"
-    )
-
-
-# ============================================================
+# =========================================================
 # HERO
-# ============================================================
+# =========================================================
 
 st.html(
     """
-    <div class="rl-hero">
+    <div style="
+        padding:1.8rem 0 1.2rem 0;
+    ">
 
-        <span class="rl-badge">
-            AI Research Workspace
-        </span>
+        <div style="
+            display:inline-flex;
+            align-items:center;
+            gap:7px;
+            padding:6px 11px;
+            border-radius:999px;
+            background:rgba(99,102,241,0.10);
+            border:1px solid rgba(129,140,248,0.22);
+            color:#a5b4fc;
+            font-size:11px;
+            font-weight:700;
+            letter-spacing:0.08em;
+            text-transform:uppercase;
+        ">
+            ✦ AI Research Workspace
+        </div>
 
-        <h1 class="rl-title">
+        <h1 style="
+            margin:16px 0 7px 0;
+            color:#f8fafc;
+            font-size:3.1rem;
+            line-height:1.05;
+            font-weight:850;
+            letter-spacing:-0.04em;
+        ">
             Research deeper.<br>
-            Think critically.
+            <span style="
+                background:
+                    linear-gradient(
+                        90deg,
+                        #818cf8,
+                        #c084fc
+                    );
+                -webkit-background-clip:text;
+                -webkit-text-fill-color:transparent;
+            ">
+                Think critically.
+            </span>
         </h1>
 
-        <p class="rl-description">
-            A five-agent research team that plans your investigation,
-            searches academic literature, gathers broader context,
-            challenges the evidence and produces a structured report.
+        <p style="
+            color:#858da0;
+            font-size:0.95rem;
+            max-width:680px;
+            line-height:1.6;
+            margin-top:12px;
+        ">
+            Ask a research question and let a specialized
+            multi-agent team plan, investigate, critique,
+            and synthesize the evidence.
         </p>
 
     </div>
@@ -506,233 +485,443 @@ st.html(
 )
 
 
-# ============================================================
-# RESEARCH QUESTION
-# ============================================================
+# =========================================================
+# QUESTION SECTION
+# =========================================================
 
-st.html(
-    """
-    <div class="rl-section-label">
-        Research question
-    </div>
-    """
-)
+st.markdown("### 🔎 Research Question")
 
 question = st.text_area(
-    "Research question",
+    label="Research question",
+    value=st.session_state.research_question,
+    height=130,
     placeholder=(
         "Example: What is the current role of artificial "
         "intelligence in pharmaceutical quality control?"
     ),
-    height=120,
     label_visibility="collapsed",
 )
 
-st.write("")
+question = question.strip()
 
-start = st.button(
-    "⚡  Start Research",
+st.caption(
+    "Tip: Ask a focused question for a more useful research report."
+)
+
+
+# =========================================================
+# EXAMPLE QUESTIONS
+# =========================================================
+
+with st.expander("💡 Example research questions"):
+
+    examples = [
+        "What is the current role of artificial intelligence in pharmaceutical quality control?",
+        "How is machine learning being used in pharmaceutical drug discovery?",
+        "What are the major applications of AI in pharmacovigilance?",
+        "What are the challenges of implementing AI in pharmaceutical manufacturing?",
+        "How can AI improve quality assurance in pharmaceutical production?",
+    ]
+
+    for example in examples:
+
+        if st.button(
+            example,
+            key=f"example_{example}",
+            use_container_width=True,
+        ):
+
+            st.session_state.research_question = example
+
+            st.rerun()
+
+
+# =========================================================
+# START BUTTON
+# =========================================================
+
+st.markdown("")
+
+start_research = st.button(
+    "🚀 Start Research",
     type="primary",
+    use_container_width=True,
+    disabled=st.session_state.research_running,
 )
 
 
-# ============================================================
-# PIPELINE
-# ============================================================
-
-st.html(
-    """
-    <div class="rl-section-label">
-        Live research pipeline
-    </div>
-    """
-)
+# =========================================================
+# PIPELINE UI PLACEHOLDER
+# =========================================================
 
 pipeline_placeholder = st.empty()
 
 
-def render_pipeline(active_agent=None):
+def render_pipeline():
 
-    completed = st.session_state.completed_agents
+    cards = []
 
-    html = ""
+    for index, (name, description) in enumerate(AGENTS):
 
-    for name, description in agents:
+        status = st.session_state.agent_status.get(
+            name,
+            "waiting"
+        )
 
-        if name in completed:
+        if status == "active":
 
-            dot_class = "rl-dot-done"
+            border = (
+                "rgba(129,140,248,0.55)"
+            )
+
+            background = (
+                "rgba(79,70,229,0.13)"
+            )
+
+            icon = "🟢"
+            status_text = "ACTIVE"
+
+        elif status == "done":
+
+            border = (
+                "rgba(74,222,128,0.30)"
+            )
+
+            background = (
+                "rgba(34,197,94,0.07)"
+            )
+
             icon = "✓"
-            card_class = "rl-agent rl-agent-done"
-
-        elif name == active_agent:
-
-            dot_class = "rl-dot-active"
-            icon = "●"
-            card_class = "rl-agent rl-agent-active"
+            status_text = "DONE"
 
         else:
 
-            dot_class = "rl-dot-waiting"
+            border = (
+                "rgba(148,163,184,0.10)"
+            )
+
+            background = (
+                "rgba(15,23,42,0.50)"
+            )
+
             icon = "○"
-            card_class = "rl-agent"
+            status_text = "WAITING"
 
-        html += f"""
-        <div class="{card_class}">
+        message = st.session_state.agent_messages.get(
+            name,
+            description,
+        )
 
-            <div class="rl-agent-row">
+        cards.append(
+            f"""
+            <div style="
+                flex:1;
+                min-width:170px;
+                padding:16px;
+                border-radius:16px;
+                background:{background};
+                border:1px solid {border};
+                margin-bottom:10px;
+            ">
 
-                <span class="rl-dot {dot_class}"></span>
+                <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    gap:8px;
+                ">
 
-                <span class="rl-agent-title">
-                    {icon}&nbsp;&nbsp;{name}
-                </span>
+                    <div style="
+                        color:#f1f5f9;
+                        font-size:13px;
+                        font-weight:750;
+                    ">
+                        {icon}&nbsp; {name}
+                    </div>
+
+                    <div style="
+                        color:#818cf8;
+                        font-size:9px;
+                        font-weight:800;
+                        letter-spacing:0.06em;
+                    ">
+                        {status_text}
+                    </div>
+
+                </div>
+
+                <div style="
+                    color:#7f8aa3;
+                    font-size:11px;
+                    line-height:1.5;
+                    margin-top:8px;
+                ">
+                    {message}
+                </div>
 
             </div>
+            """
+        )
 
-            <div class="rl-agent-description">
-                {description}
-            </div>
+    html = f"""
+    <div style="
+        margin:1.5rem 0 1rem 0;
+    ">
 
+        <div style="
+            color:#94a3b8;
+            font-size:11px;
+            font-weight:800;
+            text-transform:uppercase;
+            letter-spacing:0.12em;
+            margin-bottom:10px;
+        ">
+            Research Pipeline
         </div>
-        """
+
+        <div style="
+            display:flex;
+            flex-wrap:wrap;
+            gap:10px;
+        ">
+            {''.join(cards)}
+        </div>
+
+    </div>
+    """
 
     pipeline_placeholder.html(html)
 
 
+# =========================================================
+# INITIAL PIPELINE
+# =========================================================
+
 render_pipeline()
 
 
-# ============================================================
-# CURRENT AGENT
-# ============================================================
+# =========================================================
+# RESEARCH EXECUTION
+# =========================================================
 
-current_placeholder = st.empty()
+if start_research:
 
-
-def update_agent(agent_name, message):
-
-    st.session_state.current_agent = agent_name
-    st.session_state.current_message = message
-
-    current_placeholder.html(
-        f"""
-        <div class="rl-current">
-
-            <div class="rl-current-label">
-                ● Currently working
-            </div>
-
-            <div class="rl-current-name">
-                {agent_name}
-            </div>
-
-            <div class="rl-current-message">
-                {message}
-            </div>
-
-        </div>
-        """
-    )
-
-    render_pipeline(agent_name)
-
-
-# ============================================================
-# RUN RESEARCH
-# ============================================================
-
-if start:
-
-    if not question.strip():
+    if not question:
 
         st.warning(
             "Please enter a research question first."
         )
 
-    else:
+        st.stop()
 
-        st.session_state.research_result = None
-        st.session_state.completed_agents = []
+    # -----------------------------------------------------
+    # Save question
+    # -----------------------------------------------------
 
-        update_agent(
-            "Research Planner",
-            "Preparing your research strategy..."
+    st.session_state.research_question = question
+    st.session_state.research_result = None
+    st.session_state.research_running = True
+
+    # Reset agents
+
+    for agent_name, _ in AGENTS:
+
+        st.session_state.agent_status[
+            agent_name
+        ] = "waiting"
+
+    st.session_state.agent_messages = {}
+
+    render_pipeline()
+
+    # -----------------------------------------------------
+    # Current operation indicator
+    # -----------------------------------------------------
+
+    current_placeholder = st.empty()
+
+    # -----------------------------------------------------
+    # Main research process
+    # -----------------------------------------------------
+
+    try:
+
+        # =================================================
+        # STEP 1 — Academic Search
+        # =================================================
+
+        current_placeholder.info(
+            "🔎 Searching academic literature..."
         )
 
-        try:
+        academic_tool = AcademicSearchTool()
 
-            crew = build_research_crew(
-                status_callback=update_agent
+        academic_sources = academic_tool._run(
+            question
+        )
+
+        academic_sources = str(
+            academic_sources
+        )[:3500]
+
+        # =================================================
+        # STEP 2 — Web Search
+        # =================================================
+
+        current_placeholder.info(
+            "🌐 Gathering broader web research..."
+        )
+
+        web_tool = WebResearchTool()
+
+        web_sources = web_tool._run(
+            question
+        )
+
+        web_sources = str(
+            web_sources
+        )[:3000]
+
+        # =================================================
+        # STEP 3 — Build Crew
+        # =================================================
+
+        current_placeholder.info(
+            "🧠 Starting the multi-agent research team..."
+        )
+
+        crew = build_research_crew(
+            status_callback=update_agent
+        )
+
+        render_pipeline()
+
+        # =================================================
+        # STEP 4 — Kickoff
+        # =================================================
+
+        result = crew.kickoff(
+            inputs={
+                "question": question,
+                "academic_sources": academic_sources,
+                "web_sources": web_sources,
+            }
+        )
+
+        # =================================================
+        # STEP 5 — Save Result
+        # =================================================
+
+        if hasattr(result, "raw"):
+
+            final_report = result.raw
+
+        else:
+
+            final_report = str(result)
+
+        final_report = final_report.strip()
+
+        if not final_report:
+
+            raise ValueError(
+                "The research team returned an empty report."
             )
 
-            result = crew.kickoff(
-                inputs={
-                    "question": question.strip()
-                }
-            )
+        # -------------------------------------------------
+        # Mark all agents complete
+        # -------------------------------------------------
 
-            if hasattr(result, "raw"):
-                final_result = result.raw
-            else:
-                final_result = str(result)
+        for agent_name, _ in AGENTS:
 
-            st.session_state.research_result = final_result
+            st.session_state.agent_status[
+                agent_name
+            ] = "done"
 
-            st.session_state.completed_agents = [
-                name
-                for name, _ in agents
-            ]
+        st.session_state.research_result = final_report
 
-            update_agent(
-                "Research Complete",
-                "All five agents have completed their work."
-            )
+        st.session_state.research_running = False
 
-            render_pipeline(None)
+        current_placeholder.empty()
 
-        except Exception as exc:
+        render_pipeline()
 
-            st.error(
-                "The research team encountered an error."
-            )
+    except Exception as e:
 
-            with st.expander(
-                "Technical details"
-            ):
-                st.exception(exc)
+        st.session_state.research_running = False
+
+        current_placeholder.empty()
+
+        st.error(
+            "The research team could not complete the request."
+        )
+
+        with st.expander(
+            "🔧 Technical details",
+            expanded=True,
+        ):
+
+            st.exception(e)
+
+        st.info(
+            "If this error is related to Groq token limits, "
+            "the research pipeline may need additional context "
+            "compression."
+        )
 
 
-# ============================================================
+# =========================================================
 # FINAL REPORT
-# ============================================================
+# =========================================================
 
 if st.session_state.research_result:
 
-    st.divider()
+    st.markdown("")
 
     st.html(
         """
-        <div class="rl-section-label">
-            Final research report
-        </div>
+        <div style="
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:12px;
+            margin-top:2rem;
+            margin-bottom:0.5rem;
+        ">
 
-        <div class="rl-report-header">
+            <div>
 
-            <div style="
-                color:#f8fafc;
-                font-size:1.05rem;
-                font-weight:800;
-            ">
-                ✦ Research synthesis complete
+                <div style="
+                    color:#94a3b8;
+                    font-size:10px;
+                    font-weight:800;
+                    text-transform:uppercase;
+                    letter-spacing:0.12em;
+                ">
+                    Research Complete
+                </div>
+
+                <div style="
+                    color:#f8fafc;
+                    font-size:25px;
+                    font-weight:800;
+                    margin-top:4px;
+                ">
+                    Research Report
+                </div>
+
             </div>
 
             <div style="
-                color:#858da0;
-                font-size:0.8rem;
-                margin-top:0.25rem;
+                padding:6px 10px;
+                border-radius:999px;
+                color:#86efac;
+                background:rgba(34,197,94,0.08);
+                border:1px solid rgba(74,222,128,0.18);
+                font-size:10px;
+                font-weight:800;
             ">
-                Generated from the combined work of five specialized agents.
+                ✓ COMPLETE
             </div>
 
         </div>
@@ -740,6 +929,35 @@ if st.session_state.research_result:
     )
 
     st.markdown(
+        '<div class="report-container">',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
         st.session_state.research_result
     )
 
+    st.markdown(
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+# =========================================================
+# FOOTER
+# =========================================================
+
+st.markdown("")
+
+st.html(
+    """
+    <div style="
+        text-align:center;
+        padding:2rem 0 1rem 0;
+        color:#475569;
+        font-size:10px;
+    ">
+        ResearchLab AI · CrewAI × Groq × Streamlit
+    </div>
+    """
+)
