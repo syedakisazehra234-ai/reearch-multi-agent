@@ -7,37 +7,23 @@ from crewai import BaseLLM
 
 
 class GroqLLM(BaseLLM):
-    """
-    CrewAI-compatible Groq LLM.
-
-    Designed for Groq's on-demand token limits by:
-    - supporting native tool calling
-    - removing unsupported CrewAI metadata
-    - limiting request size
-    - limiting output size
-    - compacting oversized conversation context
-    """
 
     _client: Groq = PrivateAttr()
 
-    # Keep the complete request comfortably below Groq's
-    # 8K TPM limit.
-    MAX_INPUT_CHARS = 18000
-
-    # Keep generated responses compact.
-    MAX_OUTPUT_TOKENS = 1200
+    MAX_INPUT_CHARS = 7000
+    MAX_OUTPUT_TOKENS = 500
 
     def __init__(
         self,
-        model: str = "openai/gpt-oss-120b",
-        temperature: float = 0.2,
+        model="openai/gpt-oss-120b",
+        temperature=0.1,
     ):
+
         api_key = os.getenv("GROQ_API_KEY")
 
         if not api_key:
             raise ValueError(
-                "GROQ_API_KEY is missing. "
-                "Add it under Streamlit Secrets."
+                "GROQ_API_KEY is missing."
             )
 
         super().__init__(
@@ -45,13 +31,12 @@ class GroqLLM(BaseLLM):
             temperature=temperature,
         )
 
-        self._client = Groq(api_key=api_key)
+        self._client = Groq(
+            api_key=api_key
+        )
 
     @staticmethod
-    def _clean_message(message: Any) -> dict:
-        """
-        Remove CrewAI-specific metadata that Groq does not accept.
-        """
+    def _clean_message(message: Any):
 
         if not isinstance(message, dict):
             return {
@@ -74,95 +59,73 @@ class GroqLLM(BaseLLM):
 
         return cleaned
 
-    @classmethod
-    def _compact_messages(cls, messages):
-        """
-        Prevent accumulated CrewAI context from becoming too large.
-
-        We preserve:
-        - system messages
-        - the latest user instruction
-        - recent tool information
-
-        Older large content is shortened.
-        """
+    def _compact_messages(self, messages):
 
         cleaned = [
-            cls._clean_message(message)
+            self._clean_message(message)
             for message in messages
         ]
 
-        # Calculate approximate character budget.
-        total_chars = sum(
-            len(str(message.get("content", "")))
-            for message in cleaned
+        total = sum(
+            len(str(m.get("content", "")))
+            for m in cleaned
         )
 
-        if total_chars <= cls.MAX_INPUT_CHARS:
+        if total <= self.MAX_INPUT_CHARS:
             return cleaned
 
-        # ---------------------------------------------------------
-        # First pass:
-        # Keep system messages intact.
-        # ---------------------------------------------------------
-
         system_messages = [
-            message
-            for message in cleaned
-            if message.get("role") == "system"
+            m for m in cleaned
+            if m.get("role") == "system"
         ]
 
         other_messages = [
-            message
-            for message in cleaned
-            if message.get("role") != "system"
+            m for m in cleaned
+            if m.get("role") != "system"
         ]
 
-        system_chars = sum(
-            len(str(message.get("content", "")))
-            for message in system_messages
+        system_size = sum(
+            len(str(m.get("content", "")))
+            for m in system_messages
         )
 
-        remaining_budget = max(
-            4000,
-            cls.MAX_INPUT_CHARS - system_chars
+        remaining = max(
+            2500,
+            self.MAX_INPUT_CHARS - system_size
         )
-
-        # ---------------------------------------------------------
-        # Preserve the most recent messages first.
-        # ---------------------------------------------------------
 
         selected = []
 
         for message in reversed(other_messages):
 
-            content = str(message.get("content", ""))
+            content = str(
+                message.get("content", "")
+            )
 
-            if not content:
-                selected.insert(0, message)
-                continue
+            if len(content) <= remaining:
 
-            if len(content) <= remaining_budget:
-                selected.insert(0, message)
-                remaining_budget -= len(content)
+                selected.insert(
+                    0,
+                    message
+                )
+
+                remaining -= len(content)
 
             else:
 
-                # Keep the most useful portion of a large message.
-                if remaining_budget > 1000:
+                if remaining > 500:
 
-                    shortened = content[
-                        :remaining_budget
-                    ]
+                    shortened = dict(message)
 
-                    message_copy = dict(message)
-                    message_copy["content"] = (
-                        shortened
-                        + "\n\n[Earlier content compacted "
-                        "to remain within the API token limit.]"
+                    shortened["content"] = (
+                        content[:remaining]
+                        + "\n[Context shortened.]"
                     )
 
-                    selected.insert(0, message_copy)
+                    selected.insert(
+                        0,
+                        shortened
+                    )
 
                 break
 
@@ -180,10 +143,6 @@ class GroqLLM(BaseLLM):
         **kwargs,
     ):
 
-        # ---------------------------------------------------------
-        # 1. Normalize messages
-        # ---------------------------------------------------------
-
         if isinstance(messages, str):
 
             groq_messages = [
@@ -195,62 +154,43 @@ class GroqLLM(BaseLLM):
 
         else:
 
-            groq_messages = self._compact_messages(messages)
-
-        # ---------------------------------------------------------
-        # 2. Build request
-        # ---------------------------------------------------------
+            groq_messages = self._compact_messages(
+                messages
+            )
 
         request = {
             "model": self.model,
             "messages": groq_messages,
-            "temperature": (
-                self.temperature
-                if self.temperature is not None
-                else 0.2
-            ),
+            "temperature": 0.1,
             "max_tokens": self.MAX_OUTPUT_TOKENS,
-            "service_tier": "auto",
+            "reasoning_effort": "low",
         }
 
-        # ---------------------------------------------------------
-        # 3. Native tool calling
-        # ---------------------------------------------------------
+        # We intentionally do NOT pass CrewAI tools here.
+        # Research tools are executed once directly in app.py.
+        #
+        # This prevents repeated tool-calling requests from
+        # exceeding the current Groq TPM limit.
 
-        if tools:
-
-            request["tools"] = tools
-            request["tool_choice"] = "auto"
-
-            # Avoid unnecessary parallel tool calls.
-            request["parallel_tool_calls"] = False
-
-        # ---------------------------------------------------------
-        # 4. Call Groq
-        # ---------------------------------------------------------
-
-        completion = self._client.chat.completions.create(
-            **request
+        completion = (
+            self._client
+            .chat
+            .completions
+            .create(**request)
         )
 
-        message = completion.choices[0].message
+        return (
+            completion
+            .choices[0]
+            .message
+            .content
+            or ""
+        )
 
-        # ---------------------------------------------------------
-        # 5. Return native tool calls
-        # ---------------------------------------------------------
+    def supports_function_calling(self):
 
-        if getattr(message, "tool_calls", None):
+        return False
 
-            return list(message.tool_calls)
+    def supports_stop_words(self):
 
-        # ---------------------------------------------------------
-        # 6. Return normal text
-        # ---------------------------------------------------------
-
-        return message.content or ""
-
-    def supports_function_calling(self) -> bool:
-        return True
-
-    def supports_stop_words(self) -> bool:
         return False
