@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 
 from crew import build_research_crew
@@ -743,4 +742,4 @@ if st.session_state.research_result:
     st.markdown(
         st.session_state.research_result
     )
-```
+
