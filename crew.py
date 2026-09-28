@@ -1,5 +1,4 @@
 from crewai import Crew, Task, Process
-
 from groq_llm import GroqLLM
 
 from agents.planner import create_planner
@@ -14,43 +13,74 @@ from tools.research_tools import (
 )
 
 
+def compact_text(text, max_chars=3500):
+
+    if text is None:
+        return ""
+
+    text = str(text)
+
+    if len(text) <= max_chars:
+        return text
+
+    return (
+        text[:max_chars]
+        + "\n\n[Additional source material omitted.]"
+    )
+
+
 def build_research_crew(status_callback=None):
 
-    llm = GroqLLM()
+    # -----------------------------------------------------
+    # LLM
+    # -----------------------------------------------------
+
+    llm = GroqLLM(
+        model="openai/gpt-oss-120b",
+        temperature=0.1,
+    )
+
+    # -----------------------------------------------------
+    # Tools
+    # -----------------------------------------------------
 
     academic_tool = AcademicSearchTool()
     web_tool = WebResearchTool()
 
+    # -----------------------------------------------------
+    # Agents
+    # -----------------------------------------------------
+
     planner = create_planner(
         llm,
-        status_callback,
+        status_callback
     )
 
     academic_researcher = create_academic_researcher(
         llm,
         academic_tool,
-        status_callback,
+        status_callback
     )
 
     web_researcher = create_web_researcher(
         llm,
         web_tool,
-        status_callback,
+        status_callback
     )
 
     evidence_critic = create_evidence_critic(
         llm,
-        status_callback,
+        status_callback
     )
 
     research_writer = create_research_writer(
         llm,
-        status_callback,
+        status_callback
     )
 
-    # ---------------------------------------------------------
-    # TASK 1 — PLAN
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
+    # PLANNER
+    # -----------------------------------------------------
 
     planning_task = Task(
         description="""
@@ -58,30 +88,39 @@ def build_research_crew(status_callback=None):
 
         {question}
 
-        Create a rigorous research plan.
+        Create a concise research strategy.
 
         Include:
 
-        1. Main research objective
-        2. 4-7 focused research questions
-        3. Key concepts that need clarification
-        4. Evidence that should be collected
-        5. Important limitations or boundaries
+        1. Main objective
+        2. Four focused research questions
+        3. Key concepts
+        4. Evidence requirements
+        5. Important boundaries
 
-        Do not answer the research question yet.
+        Do not answer the question.
+
+        Keep the output below 300 words.
         """,
 
         expected_output=(
-            "A structured research plan with objectives, subquestions, "
-            "evidence requirements and boundaries."
+            "A concise research strategy."
         ),
 
         agent=planner,
     )
 
-    # ---------------------------------------------------------
-    # TASK 2 — ACADEMIC
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
+    # ACADEMIC SEARCH
+    # -----------------------------------------------------
+
+    # The actual question is passed when kickoff() is called.
+    # The task receives a compact academic result through
+    # a placeholder supplied by the application.
+    #
+    # We therefore use a small helper task whose input
+    # contains the question and source material.
+    # -----------------------------------------------------
 
     academic_task = Task(
         description="""
@@ -89,38 +128,36 @@ def build_research_crew(status_callback=None):
 
         {question}
 
-        Use the Academic Literature Search tool.
+        Academic literature:
 
-        Follow the research plan from the previous agent.
+        {academic_sources}
 
-        Find relevant scholarly publications.
+        Summarize the academic evidence.
 
-        For every useful source preserve:
+        For each useful source include:
 
         - title
-        - authors
+        - authors when available
         - year
         - journal
         - DOI
+        - relevance to the question
 
-        Explain briefly why each source is relevant.
+        Do not invent information.
 
-        Do not invent publications or citations.
+        Keep the response concise.
         """,
 
         expected_output=(
-            "A structured collection of relevant academic sources "
-            "with bibliographic information and relevance notes."
+            "A concise academic evidence summary."
         ),
 
         agent=academic_researcher,
-
-        context=[planning_task],
     )
 
-    # ---------------------------------------------------------
-    # TASK 3 — WEB
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
+    # WEB SEARCH
+    # -----------------------------------------------------
 
     web_task = Task(
         description="""
@@ -128,36 +165,32 @@ def build_research_crew(status_callback=None):
 
         {question}
 
-        Use the Web Research Search tool.
+        Web research:
 
-        Follow the research plan from the planner.
+        {web_sources}
 
-        Gather useful broader research context.
+        Summarize useful contextual information.
 
-        Preserve:
+        Include source URLs when supplied.
 
-        - source title
-        - key information
-        - source URL
+        Clearly distinguish general web information
+        from academic evidence.
 
-        Clearly distinguish general web information from academic evidence.
+        Do not invent URLs or facts.
 
-        Do not invent URLs or sources.
+        Keep the response concise.
         """,
 
         expected_output=(
-            "A structured collection of useful web sources and "
-            "contextual findings with URLs."
+            "A concise web research summary."
         ),
 
         agent=web_researcher,
-
-        context=[planning_task],
     )
 
-    # ---------------------------------------------------------
-    # TASK 4 — CRITIC
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
+    # CRITIC
+    # -----------------------------------------------------
 
     critic_task = Task(
         description="""
@@ -165,8 +198,15 @@ def build_research_crew(status_callback=None):
 
         {question}
 
-        Critically evaluate the research produced by the academic
-        researcher and web researcher.
+        Academic evidence:
+
+        {academic_task}
+
+        Web evidence:
+
+        {web_task}
+
+        Evaluate the supplied evidence.
 
         Identify:
 
@@ -175,16 +215,16 @@ def build_research_crew(status_callback=None):
         3. Unsupported claims
         4. Contradictions
         5. Missing evidence
-        6. Important limitations
+        6. Limitations
         7. Research gaps
 
-        Do not add new facts that are not supported by the supplied
-        research material.
+        Do not introduce new facts.
+
+        Keep the assessment concise.
         """,
 
         expected_output=(
-            "A critical evidence assessment identifying strengths, "
-            "weaknesses, contradictions, gaps and limitations."
+            "A concise critical evidence assessment."
         ),
 
         agent=evidence_critic,
@@ -195,9 +235,9 @@ def build_research_crew(status_callback=None):
         ],
     )
 
-    # ---------------------------------------------------------
-    # TASK 5 — WRITER
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
+    # WRITER
+    # -----------------------------------------------------
 
     writing_task = Task(
         description="""
@@ -205,14 +245,11 @@ def build_research_crew(status_callback=None):
 
         {question}
 
-        Use the outputs from:
+        Evidence assessment:
 
-        - Research Planner
-        - Academic Researcher
-        - Web Researcher
-        - Evidence Critic
+        {critic_task}
 
-        Structure the report as:
+        Structure:
 
         # Research Report
 
@@ -234,31 +271,35 @@ def build_research_crew(status_callback=None):
 
         Rules:
 
-        - Do not invent facts.
-        - Do not invent citations.
-        - Do not invent URLs.
-        - Preserve DOI URLs supplied by the academic researcher.
-        - Preserve web URLs supplied by the web researcher.
+        - Use only supplied evidence.
+        - Never invent citations.
+        - Never invent statistics.
+        - Never invent URLs.
+        - Preserve supplied DOI URLs.
+        - Preserve supplied web URLs.
         - Clearly distinguish evidence from interpretation.
-        - Mention important uncertainty.
-        - Keep the report readable and professional.
+        - State important uncertainty.
+        - Keep the report professional and concise.
+
+        Target length: approximately 700 words.
         """,
 
         expected_output=(
-            "A complete evidence-aware research report with references."
+            "A professional research report with references."
         ),
 
         agent=research_writer,
 
         context=[
-            planning_task,
-            academic_task,
-            web_task,
             critic_task,
         ],
     )
 
-    crew = Crew(
+    # -----------------------------------------------------
+    # CREW
+    # -----------------------------------------------------
+
+    return Crew(
         agents=[
             planner,
             academic_researcher,
@@ -283,5 +324,3 @@ def build_research_crew(status_callback=None):
 
         cache=False,
     )
-
-    return crew
