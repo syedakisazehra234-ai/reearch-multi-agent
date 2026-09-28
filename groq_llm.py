@@ -8,10 +8,10 @@ from crewai import BaseLLM
 
 class GroqLLM(BaseLLM):
     """
-    Custom CrewAI LLM using the official Groq Python SDK.
+    CrewAI-compatible Groq LLM.
 
-    We intentionally use BaseLLM instead of CrewAI's generic provider
-    routing so the application talks directly to Groq.
+    Uses Groq's native OpenAI-compatible tool calling so that
+    CrewAI agents can reliably execute research tools.
     """
 
     _client: Groq = PrivateAttr()
@@ -26,7 +26,7 @@ class GroqLLM(BaseLLM):
         if not api_key:
             raise ValueError(
                 "GROQ_API_KEY is missing. "
-                "Add it to Streamlit Secrets or your environment."
+                "Add it under Streamlit Secrets."
             )
 
         super().__init__(
@@ -39,8 +39,8 @@ class GroqLLM(BaseLLM):
     @staticmethod
     def _clean_message(message: Any) -> dict:
         """
-        Remove internal CrewAI metadata that should never be sent
-        to the Groq API.
+        Remove CrewAI-only metadata that Groq does not accept.
+        Preserve native tool-call fields.
         """
 
         if not isinstance(message, dict):
@@ -52,6 +52,9 @@ class GroqLLM(BaseLLM):
         cleaned = {}
 
         for key, value in message.items():
+
+            # CrewAI internal metadata that should not be
+            # sent directly to Groq.
             if key in {
                 "cache_breakpoint",
                 "provider_specific_fields",
@@ -73,38 +76,95 @@ class GroqLLM(BaseLLM):
         from_agent=None,
         response_model=None,
         **kwargs,
-    ) -> str:
+    ):
+        """
+        Send a request to Groq.
+
+        When CrewAI supplies tools, they are forwarded to Groq's
+        native tool-calling API.
+
+        CrewAI expects native tool calls to be returned as a list.
+        """
+
+        # ---------------------------------------------------------
+        # 1. Normalize messages
+        # ---------------------------------------------------------
 
         if isinstance(messages, str):
+
             groq_messages = [
                 {
                     "role": "user",
                     "content": messages,
                 }
             ]
+
         else:
+
             groq_messages = [
                 self._clean_message(message)
                 for message in messages
             ]
 
-        # We intentionally let CrewAI execute its tools through its
-        # ReAct loop. Therefore Groq itself doesn't need native
-        # function-calling schemas here.
+        # ---------------------------------------------------------
+        # 2. Build request
+        # ---------------------------------------------------------
+
+        request = {
+            "model": self.model,
+            "messages": groq_messages,
+            "temperature": (
+                self.temperature
+                if self.temperature is not None
+                else 0.2
+            ),
+            "max_tokens": 6000,
+        }
+
+        # ---------------------------------------------------------
+        # 3. Native tool calling
+        # ---------------------------------------------------------
+
+        if tools:
+            request["tools"] = tools
+            request["tool_choice"] = "auto"
+
+        # ---------------------------------------------------------
+        # 4. Call Groq
+        # ---------------------------------------------------------
+
         completion = self._client.chat.completions.create(
-            model=self.model,
-            messages=groq_messages,
-            temperature=self.temperature or 0.2,
-            max_tokens=6000,
+            **request
         )
 
-        return completion.choices[0].message.content or ""
+        message = completion.choices[0].message
+
+        # ---------------------------------------------------------
+        # 5. If Groq requested tools, return the tool calls
+        #    directly to CrewAI.
+        # ---------------------------------------------------------
+
+        if getattr(message, "tool_calls", None):
+
+            return list(message.tool_calls)
+
+        # ---------------------------------------------------------
+        # 6. Otherwise return normal text
+        # ---------------------------------------------------------
+
+        return message.content or ""
 
     def supports_function_calling(self) -> bool:
         """
-        False means CrewAI uses its normal tool/action loop.
-        This avoids coupling the custom LLM adapter to CrewAI's
-        native function-calling conversion.
+        Tell CrewAI that this LLM supports native function calling.
+        """
+
+        return True
+
+    def supports_stop_words(self) -> bool:
+        """
+        Groq can handle generation without CrewAI stop-word
+        manipulation, so keep this disabled.
         """
 
         return False
