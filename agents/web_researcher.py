@@ -3,42 +3,43 @@ from crewai import Agent
 
 def create_web_researcher(
     llm,
-    web_tool,
+    web_tool=None,
     status_callback=None,
 ):
 
     def callback(_step):
+
         if status_callback:
+
             status_callback(
                 "Web Researcher",
-                "Investigating broader web-based research context."
+                "Analyzing broader web research."
             )
 
     return Agent(
         role="Web Research Specialist",
 
         goal=(
-            "Gather useful web-based background information related to "
-            "the research question. Identify organizations, concepts, "
-            "definitions and relevant source pages."
+            "Analyze supplied web research and extract "
+            "useful contextual information without "
+            "inventing sources."
         ),
 
         backstory=(
             "You are a digital research specialist. "
-            "You investigate broader context while clearly preserving "
-            "the distinction between general web information and "
-            "academic evidence."
+            "You distinguish general web information "
+            "from academic evidence."
         ),
 
         llm=llm,
 
-        tools=[web_tool],
+        tools=[],
 
         allow_delegation=False,
 
         verbose=False,
 
-        max_iter=5,
+        max_iter=1,
 
         step_callback=callback,
     )
