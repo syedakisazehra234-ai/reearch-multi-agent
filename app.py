@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 
 from crew import build_research_crew
@@ -17,25 +18,28 @@ st.set_page_config(
 
 # ============================================================
 # CUSTOM CSS
+# Use st.html() instead of st.markdown() for HTML/CSS.
 # ============================================================
 
-st.markdown(
+st.html(
     """
     <style>
 
-    /* ---------- GLOBAL ---------- */
+    /* ======================================================
+       GLOBAL
+       ====================================================== */
 
     .stApp {
         background:
             radial-gradient(
                 circle at 10% 0%,
-                rgba(99, 102, 241, 0.12),
+                rgba(99, 102, 241, 0.13),
                 transparent 30%
             ),
             radial-gradient(
-                circle at 90% 10%,
+                circle at 90% 5%,
                 rgba(168, 85, 247, 0.10),
-                transparent 30%
+                transparent 28%
             ),
             #080b12;
     }
@@ -46,195 +50,319 @@ st.markdown(
         padding-bottom: 4rem;
     }
 
-    /* ---------- HERO ---------- */
+    /* ======================================================
+       SIDEBAR
+       ====================================================== */
 
-    .hero {
-        padding: 2.2rem 2rem;
-        border-radius: 24px;
+    section[data-testid="stSidebar"] {
+        background: #090c13;
+        border-right: 1px solid rgba(255,255,255,0.07);
+    }
+
+    /* ======================================================
+       HERO
+       ====================================================== */
+
+    .rl-hero {
+        padding: 2.4rem 2.2rem;
+        border-radius: 26px;
+
         background:
             linear-gradient(
                 135deg,
                 rgba(99, 102, 241, 0.20),
-                rgba(168, 85, 247, 0.10)
+                rgba(168, 85, 247, 0.08)
             );
-        border: 1px solid rgba(255,255,255,0.10);
-        margin-bottom: 1.5rem;
+
+        border: 1px solid rgba(255,255,255,0.09);
+
+        box-shadow:
+            0 20px 70px rgba(0,0,0,0.22);
+
+        margin-bottom: 1.8rem;
     }
 
-    .hero-badge {
+    .rl-badge {
         display: inline-block;
-        padding: 0.35rem 0.75rem;
+
+        padding: 0.38rem 0.8rem;
+
         border-radius: 999px;
-        background: rgba(255,255,255,0.08);
+
+        background: rgba(255,255,255,0.07);
+
         border: 1px solid rgba(255,255,255,0.10);
+
         color: #c4b5fd;
-        font-size: 0.78rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
+
+        font-size: 0.72rem;
+
+        font-weight: 800;
+
+        letter-spacing: 0.10em;
+
         text-transform: uppercase;
     }
 
-    .hero h1 {
-        font-size: 3.2rem;
+    .rl-title {
+        margin: 0.9rem 0 0.6rem 0;
+
+        color: #f8fafc;
+
+        font-size: 3.1rem;
+
         line-height: 1.05;
-        margin: 0.8rem 0 0.6rem 0;
-        font-weight: 800;
-        letter-spacing: -0.04em;
+
+        font-weight: 850;
+
+        letter-spacing: -0.045em;
     }
 
-    .hero p {
+    .rl-description {
+        margin: 0;
+
+        max-width: 750px;
+
         color: #a7adbd;
-        font-size: 1.05rem;
-        max-width: 720px;
+
+        font-size: 1.02rem;
+
         line-height: 1.7;
     }
 
-    /* ---------- SECTION ---------- */
+    /* ======================================================
+       SECTION LABEL
+       ====================================================== */
 
-    .section-label {
+    .rl-section-label {
+        margin-bottom: 0.65rem;
+
         color: #8b93a7;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        font-size: 0.72rem;
+
+        font-size: 0.70rem;
+
         font-weight: 800;
-        margin-bottom: 0.6rem;
+
+        letter-spacing: 0.13em;
+
+        text-transform: uppercase;
     }
 
-    /* ---------- AGENT CARD ---------- */
+    /* ======================================================
+       AGENT CARDS
+       ====================================================== */
 
-    .agent-card {
+    .rl-agent {
         padding: 1rem 1.15rem;
+
+        margin-bottom: 0.65rem;
+
         border-radius: 16px;
+
         background: rgba(255,255,255,0.035);
-        border: 1px solid rgba(255,255,255,0.07);
-        margin-bottom: 0.6rem;
+
+        border: 1px solid rgba(255,255,255,0.065);
+
+        transition: all 0.2s ease;
     }
 
-    .agent-active {
+    .rl-agent-active {
         background:
             linear-gradient(
                 135deg,
-                rgba(99,102,241,0.16),
+                rgba(99,102,241,0.17),
                 rgba(168,85,247,0.08)
             );
-        border: 1px solid rgba(129,140,248,0.35);
+
+        border-color: rgba(129,140,248,0.38);
+
         box-shadow:
-            0 0 25px rgba(99,102,241,0.10);
+            0 0 28px rgba(99,102,241,0.10);
     }
 
-    .agent-done {
-        border-color: rgba(34,197,94,0.18);
+    .rl-agent-done {
+        border-color: rgba(52,211,153,0.20);
     }
 
-    .agent-title {
-        font-weight: 700;
+    .rl-agent-row {
+        display: flex;
+
+        align-items: center;
+    }
+
+    .rl-agent-title {
         color: #f3f4f6;
+
+        font-size: 0.94rem;
+
+        font-weight: 750;
     }
 
-    .agent-subtitle {
-        color: #8f97aa;
-        font-size: 0.82rem;
-        margin-top: 0.2rem;
+    .rl-agent-description {
+        margin-top: 0.28rem;
+
+        color: #858da0;
+
+        font-size: 0.78rem;
     }
 
-    .dot {
-        display: inline-block;
+    .rl-dot {
         width: 9px;
         height: 9px;
+
+        margin-right: 9px;
+
         border-radius: 50%;
-        margin-right: 8px;
+
+        display: inline-block;
+
+        flex-shrink: 0;
     }
 
-    .dot-active {
+    .rl-dot-active {
         background: #a78bfa;
-        box-shadow: 0 0 12px #a78bfa;
+
+        box-shadow:
+            0 0 12px rgba(167,139,250,0.9);
     }
 
-    .dot-done {
+    .rl-dot-done {
         background: #34d399;
     }
 
-    .dot-waiting {
+    .rl-dot-waiting {
         background: #4b5563;
     }
 
-    /* ---------- CURRENT AGENT ---------- */
+    /* ======================================================
+       CURRENT AGENT
+       ====================================================== */
 
-    .current-agent {
-        padding: 1.3rem;
+    .rl-current {
+        padding: 1.25rem 1.35rem;
+
+        margin: 1.1rem 0 1.5rem 0;
+
         border-radius: 18px;
-        background: rgba(99,102,241,0.08);
+
+        background:
+            linear-gradient(
+                135deg,
+                rgba(99,102,241,0.12),
+                rgba(168,85,247,0.05)
+            );
+
         border: 1px solid rgba(129,140,248,0.25);
-        margin: 1rem 0 1.5rem 0;
     }
 
-    .current-label {
+    .rl-current-label {
         color: #a78bfa;
-        font-size: 0.72rem;
+
+        font-size: 0.68rem;
+
+        font-weight: 850;
+
+        letter-spacing: 0.13em;
+
         text-transform: uppercase;
-        letter-spacing: 0.12em;
+    }
+
+    .rl-current-name {
+        margin-top: 0.28rem;
+
+        color: #f8fafc;
+
+        font-size: 1.25rem;
+
         font-weight: 800;
     }
 
-    .current-name {
-        font-size: 1.35rem;
-        font-weight: 800;
-        margin-top: 0.3rem;
-    }
+    .rl-current-message {
+        margin-top: 0.22rem;
 
-    .current-message {
         color: #a7adbd;
-        margin-top: 0.25rem;
+
+        font-size: 0.85rem;
     }
 
-    /* ---------- REPORT ---------- */
-
-    .report-shell {
-        padding: 1.6rem;
-        border-radius: 20px;
-        background: rgba(255,255,255,0.025);
-        border: 1px solid rgba(255,255,255,0.08);
-    }
-
-    /* ---------- SIDEBAR ---------- */
-
-    section[data-testid="stSidebar"] {
-        background: #0a0d14;
-        border-right: 1px solid rgba(255,255,255,0.07);
-    }
-
-    /* ---------- BUTTON ---------- */
+    /* ======================================================
+       BUTTON
+       ====================================================== */
 
     .stButton > button {
         width: 100%;
-        border-radius: 13px;
+
         min-height: 3rem;
-        font-weight: 750;
+
+        border-radius: 13px;
+
         border: 1px solid rgba(129,140,248,0.35);
+
         background:
             linear-gradient(
                 135deg,
                 #6366f1,
                 #8b5cf6
             );
+
         color: white;
-        transition: all 0.2s ease;
+
+        font-weight: 800;
+
+        transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
     }
 
     .stButton > button:hover {
         transform: translateY(-1px);
-        box-shadow: 0 10px 30px rgba(99,102,241,0.25);
+
+        box-shadow:
+            0 12px 32px rgba(99,102,241,0.25);
     }
 
-    /* ---------- TEXTAREA ---------- */
+    /* ======================================================
+       TEXT AREA
+       ====================================================== */
 
     textarea {
         border-radius: 15px !important;
     }
 
+    /* ======================================================
+       REPORT
+       ====================================================== */
+
+    .rl-report-header {
+        padding: 1rem 1.15rem;
+
+        margin-bottom: 1rem;
+
+        border-radius: 15px;
+
+        background: rgba(255,255,255,0.035);
+
+        border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    /* ======================================================
+       MOBILE
+       ====================================================== */
+
+    @media (max-width: 700px) {
+
+        .rl-title {
+            font-size: 2.2rem;
+        }
+
+        .rl-hero {
+            padding: 1.6rem;
+        }
+
+    }
+
     </style>
-    """,
-    unsafe_allow_html=True,
+    """
 )
 
 
@@ -256,138 +384,8 @@ if "completed_agents" not in st.session_state:
 
 
 # ============================================================
-# SIDEBAR
+# AGENT DEFINITIONS
 # ============================================================
-
-with st.sidebar:
-
-    st.markdown(
-        """
-        <div style="padding: 0.8rem 0;">
-            <div style="
-                font-size:1.25rem;
-                font-weight:800;
-                letter-spacing:-0.03em;
-            ">
-                ✦ ResearchLab AI
-            </div>
-
-            <div style="
-                color:#858da0;
-                font-size:0.82rem;
-                margin-top:0.25rem;
-            ">
-                Multi-agent research workspace
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.divider()
-
-    st.markdown("### Research Team")
-
-    st.caption(
-        "Five specialized agents work sequentially to "
-        "plan, research, challenge and synthesize evidence."
-    )
-
-    st.markdown(
-        """
-        **01** · Research Planner  
-        **02** · Academic Researcher  
-        **03** · Web Researcher  
-        **04** · Evidence Critic  
-        **05** · Research Writer
-        """
-    )
-
-    st.divider()
-
-    st.markdown("### Model")
-
-    st.code(
-        "openai/gpt-oss-120b",
-        language="text",
-    )
-
-    st.caption(
-        "Powered by Groq"
-    )
-
-    st.divider()
-
-    st.caption(
-        "ResearchLab AI · CrewAI + Groq + Streamlit"
-    )
-
-
-# ============================================================
-# HERO
-# ============================================================
-
-st.markdown(
-    """
-    <div class="hero">
-
-        <span class="hero-badge">
-            AI Research Workspace
-        </span>
-
-        <h1>
-            Research deeper.<br>
-            Think critically.
-        </h1>
-
-        <p>
-            A five-agent research team that plans your investigation,
-            searches academic literature, gathers broader context,
-            challenges the evidence and produces a structured report.
-        </p>
-
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-# ============================================================
-# RESEARCH INPUT
-# ============================================================
-
-st.markdown(
-    '<div class="section-label">Research question</div>',
-    unsafe_allow_html=True,
-)
-
-question = st.text_area(
-    "",
-    placeholder=(
-        "Example: What is the current role of artificial intelligence "
-        "in pharmaceutical quality control?"
-    ),
-    height=120,
-    label_visibility="collapsed",
-)
-
-
-st.write("")
-
-start = st.button(
-    "⚡  Start Research",
-    type="primary",
-)
-
-
-# ============================================================
-# PIPELINE DISPLAY
-# ============================================================
-
-st.markdown(
-    '<div class="section-label">Live research pipeline</div>',
-    unsafe_allow_html=True,
-)
 
 agents = [
     (
@@ -413,6 +411,144 @@ agents = [
 ]
 
 
+# ============================================================
+# SIDEBAR
+# ============================================================
+
+with st.sidebar:
+
+    st.html(
+        """
+        <div style="padding:0.8rem 0 0.5rem 0;">
+
+            <div style="
+                font-size:1.25rem;
+                font-weight:800;
+                color:#f8fafc;
+                letter-spacing:-0.03em;
+            ">
+                ✦ ResearchLab AI
+            </div>
+
+            <div style="
+                color:#858da0;
+                font-size:0.82rem;
+                margin-top:0.25rem;
+            ">
+                Multi-agent research workspace
+            </div>
+
+        </div>
+        """
+    )
+
+    st.divider()
+
+    st.markdown("### Research Team")
+
+    st.caption(
+        "Five specialized agents plan, research, "
+        "challenge and synthesize evidence."
+    )
+
+    st.markdown(
+        """
+        **01** · Research Planner  
+        **02** · Academic Researcher  
+        **03** · Web Researcher  
+        **04** · Evidence Critic  
+        **05** · Research Writer
+        """
+    )
+
+    st.divider()
+
+    st.markdown("### Model")
+
+    st.code(
+        "openai/gpt-oss-120b",
+        language="text",
+    )
+
+    st.caption("Powered by Groq")
+
+    st.divider()
+
+    st.caption(
+        "ResearchLab AI · CrewAI + Groq + Streamlit"
+    )
+
+
+# ============================================================
+# HERO
+# ============================================================
+
+st.html(
+    """
+    <div class="rl-hero">
+
+        <span class="rl-badge">
+            AI Research Workspace
+        </span>
+
+        <h1 class="rl-title">
+            Research deeper.<br>
+            Think critically.
+        </h1>
+
+        <p class="rl-description">
+            A five-agent research team that plans your investigation,
+            searches academic literature, gathers broader context,
+            challenges the evidence and produces a structured report.
+        </p>
+
+    </div>
+    """
+)
+
+
+# ============================================================
+# RESEARCH QUESTION
+# ============================================================
+
+st.html(
+    """
+    <div class="rl-section-label">
+        Research question
+    </div>
+    """
+)
+
+question = st.text_area(
+    "Research question",
+    placeholder=(
+        "Example: What is the current role of artificial "
+        "intelligence in pharmaceutical quality control?"
+    ),
+    height=120,
+    label_visibility="collapsed",
+)
+
+st.write("")
+
+start = st.button(
+    "⚡  Start Research",
+    type="primary",
+)
+
+
+# ============================================================
+# PIPELINE
+# ============================================================
+
+st.html(
+    """
+    <div class="rl-section-label">
+        Live research pipeline
+    </div>
+    """
+)
+
 pipeline_placeholder = st.empty()
 
 
@@ -426,44 +562,43 @@ def render_pipeline(active_agent=None):
 
         if name in completed:
 
-            dot = "dot-done"
+            dot_class = "rl-dot-done"
             icon = "✓"
-            extra = "agent-done"
+            card_class = "rl-agent rl-agent-done"
 
         elif name == active_agent:
 
-            dot = "dot-active"
+            dot_class = "rl-dot-active"
             icon = "●"
-            extra = "agent-active"
+            card_class = "rl-agent rl-agent-active"
 
         else:
 
-            dot = "dot-waiting"
+            dot_class = "rl-dot-waiting"
             icon = "○"
-            extra = ""
+            card_class = "rl-agent"
 
         html += f"""
-        <div class="agent-card {extra}">
+        <div class="{card_class}">
 
-            <div>
-                <span class="dot {dot}"></span>
+            <div class="rl-agent-row">
 
-                <span class="agent-title">
-                    {icon} &nbsp;{name}
+                <span class="rl-dot {dot_class}"></span>
+
+                <span class="rl-agent-title">
+                    {icon}&nbsp;&nbsp;{name}
                 </span>
+
             </div>
 
-            <div class="agent-subtitle">
+            <div class="rl-agent-description">
                 {description}
             </div>
 
         </div>
         """
 
-    pipeline_placeholder.markdown(
-        html,
-        unsafe_allow_html=True,
-    )
+    pipeline_placeholder.html(html)
 
 
 render_pipeline()
@@ -481,25 +616,24 @@ def update_agent(agent_name, message):
     st.session_state.current_agent = agent_name
     st.session_state.current_message = message
 
-    current_placeholder.markdown(
+    current_placeholder.html(
         f"""
-        <div class="current-agent">
+        <div class="rl-current">
 
-            <div class="current-label">
+            <div class="rl-current-label">
                 ● Currently working
             </div>
 
-            <div class="current-name">
+            <div class="rl-current-name">
                 {agent_name}
             </div>
 
-            <div class="current-message">
+            <div class="rl-current-message">
                 {message}
             </div>
 
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     render_pipeline(agent_name)
@@ -514,7 +648,7 @@ if start:
     if not question.strip():
 
         st.warning(
-            "Enter a research question first."
+            "Please enter a research question first."
         )
 
     else:
@@ -539,11 +673,12 @@ if start:
                 }
             )
 
-            st.session_state.research_result = str(
-                result.raw
-                if hasattr(result, "raw")
-                else result
-            )
+            if hasattr(result, "raw"):
+                final_result = result.raw
+            else:
+                final_result = str(result)
+
+            st.session_state.research_result = final_result
 
             st.session_state.completed_agents = [
                 name
@@ -563,7 +698,10 @@ if start:
                 "The research team encountered an error."
             )
 
-            st.exception(exc)
+            with st.expander(
+                "Technical details"
+            ):
+                st.exception(exc)
 
 
 # ============================================================
@@ -574,21 +712,35 @@ if st.session_state.research_result:
 
     st.divider()
 
-    st.markdown(
-        '<div class="section-label">Final research report</div>',
-        unsafe_allow_html=True,
-    )
+    st.html(
+        """
+        <div class="rl-section-label">
+            Final research report
+        </div>
 
-    st.markdown(
-        '<div class="report-shell">',
-        unsafe_allow_html=True,
+        <div class="rl-report-header">
+
+            <div style="
+                color:#f8fafc;
+                font-size:1.05rem;
+                font-weight:800;
+            ">
+                ✦ Research synthesis complete
+            </div>
+
+            <div style="
+                color:#858da0;
+                font-size:0.8rem;
+                margin-top:0.25rem;
+            ">
+                Generated from the combined work of five specialized agents.
+            </div>
+
+        </div>
+        """
     )
 
     st.markdown(
         st.session_state.research_result
     )
-
-    st.markdown(
-        '</div>',
-        unsafe_allow_html=True,
-    )
+```
