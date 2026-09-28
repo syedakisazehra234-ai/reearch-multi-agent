@@ -1,5 +1,4 @@
 import requests
-from typing import Type
 
 from pydantic import BaseModel, Field
 from crewai.tools import BaseTool
@@ -8,166 +7,177 @@ from crewai.tools import BaseTool
 class AcademicSearchInput(BaseModel):
     query: str = Field(
         ...,
-        description="Academic research topic or question to search."
+        description="Academic research topic or question."
     )
 
 
 class AcademicSearchTool(BaseTool):
-    name: str = "academic_literature_search"
-
+    name: str = "Academic Literature Search"
     description: str = (
-        "Search Crossref for academic and scholarly publications. "
-        "Use this when you need peer-reviewed papers, journal articles, "
-        "DOIs, publication years, authors, or scholarly evidence."
+        "Search Crossref for relevant academic publications. "
+        "Returns a small number of concise scholarly sources "
+        "with title, authors, year, journal and DOI."
     )
-
-    args_schema: Type[BaseModel] = AcademicSearchInput
+    args_schema: type[BaseModel] = AcademicSearchInput
 
     def _run(self, query: str) -> str:
 
         try:
+
             response = requests.get(
                 "https://api.crossref.org/works",
                 params={
                     "query.bibliographic": query,
-                    "rows": 6,
+                    "rows": 4,
                     "select": (
-                        "title,author,published,DOI,"
+                        "DOI,title,author,published,"
                         "container-title,type"
                     ),
                 },
-                headers={
-                    "User-Agent": (
-                        "ResearchLabAI/1.0 "
-                        "(mailto:research@example.com)"
-                    )
-                },
-                timeout=20,
+                timeout=15,
             )
 
             response.raise_for_status()
 
-            items = response.json()["message"]["items"]
+            data = response.json()
+
+            items = data.get(
+                "message",
+                {}
+            ).get(
+                "items",
+                []
+            )
 
             if not items:
-                return "No academic publications were found."
+                return "No academic sources were found."
 
             results = []
 
-            for index, item in enumerate(items, start=1):
+            for index, item in enumerate(items[:4], 1):
 
                 title = (
-                    item.get("title", ["Untitled"])[0]
+                    item.get("title", ["Unknown title"])[0]
                 )
 
                 authors = []
 
-                for author in item.get("author", [])[:5]:
-                    given = author.get("given", "")
-                    family = author.get("family", "")
+                for author in item.get("author", [])[:3]:
 
-                    name = f"{given} {family}".strip()
+                    name = (
+                        author.get("given", "")
+                        + " "
+                        + author.get("family", "")
+                    ).strip()
 
                     if name:
                         authors.append(name)
 
-                date_parts = (
-                    item.get("published", {})
-                    .get("date-parts", [[]])[0]
+                year = "Unknown"
+
+                published = item.get(
+                    "published",
+                    {}
+                ).get(
+                    "date-parts",
+                    []
                 )
 
-                year = (
-                    date_parts[0]
-                    if date_parts
-                    else "Unknown"
-                )
-
-                doi = item.get("DOI", "")
+                if published and published[0]:
+                    year = published[0][0]
 
                 journal = (
-                    item.get("container-title", [""])[0]
+                    item.get(
+                        "container-title",
+                        ["Unknown journal"]
+                    )[0]
                 )
 
-                doi_url = (
-                    f"https://doi.org/{doi}"
-                    if doi
-                    else "No DOI available"
+                doi = item.get(
+                    "DOI",
+                    "No DOI"
                 )
 
                 results.append(
                     f"""
 SOURCE {index}
-
 Title: {title}
-
-Authors: {", ".join(authors) or "Not listed"}
-
+Authors: {", ".join(authors) if authors else "Unknown"}
 Year: {year}
-
-Journal: {journal or "Not listed"}
-
-DOI: {doi_url}
-"""
+Journal: {journal}
+DOI: https://doi.org/{doi}
+""".strip()
                 )
 
-            return "\n".join(results)
+            return "\n\n".join(results)
 
-        except Exception as exc:
-            return f"Academic search failed: {exc}"
+        except Exception as e:
+
+            return (
+                "Academic search failed. "
+                f"Reason: {str(e)}"
+            )
 
 
 class WebSearchInput(BaseModel):
     query: str = Field(
         ...,
-        description="General research topic to search."
+        description="General web research topic."
     )
 
 
 class WebResearchTool(BaseTool):
-    name: str = "web_research_search"
-
+    name: str = "Web Research Search"
     description: str = (
-        "Search Wikipedia's public knowledge API for reliable general "
-        "background information and source pages. Use this for concepts, "
-        "organizations, historical background, and broad research context."
+        "Search Wikipedia for concise background information. "
+        "Returns a small number of relevant pages and URLs."
     )
-
-    args_schema: Type[BaseModel] = WebSearchInput
+    args_schema: type[BaseModel] = WebSearchInput
 
     def _run(self, query: str) -> str:
 
         try:
+
             response = requests.get(
                 "https://en.wikipedia.org/w/api.php",
                 params={
                     "action": "query",
                     "list": "search",
                     "srsearch": query,
-                    "srlimit": 6,
+                    "srlimit": 4,
                     "format": "json",
                     "utf8": 1,
                 },
-                headers={
-                    "User-Agent": "ResearchLabAI/1.0"
-                },
-                timeout=20,
+                timeout=15,
             )
 
             response.raise_for_status()
 
-            results = response.json()["query"]["search"]
+            data = response.json()
 
-            if not results:
-                return "No web sources were found."
+            results = []
 
-            output = []
+            for index, item in enumerate(
+                data.get("query", {}).get(
+                    "search",
+                    []
+                )[:4],
+                1,
+            ):
 
-            for index, item in enumerate(results, start=1):
+                title = item.get(
+                    "title",
+                    "Unknown"
+                )
 
-                title = item["title"]
+                snippet = item.get(
+                    "snippet",
+                    ""
+                )
 
+                # Remove HTML markup.
                 snippet = (
-                    item["snippet"]
+                    snippet
                     .replace("<span class=\"searchmatch\">", "")
                     .replace("</span>", "")
                 )
@@ -177,19 +187,23 @@ class WebResearchTool(BaseTool):
                     + title.replace(" ", "_")
                 )
 
-                output.append(
+                results.append(
                     f"""
 SOURCE {index}
-
 Title: {title}
-
-Summary: {snippet}
-
+Summary: {snippet[:500]}
 URL: {url}
-"""
+""".strip()
                 )
 
-            return "\n".join(output)
+            if not results:
+                return "No web sources were found."
 
-        except Exception as exc:
-            return f"Web research failed: {exc}"
+            return "\n\n".join(results)
+
+        except Exception as e:
+
+            return (
+                "Web search failed. "
+                f"Reason: {str(e)}"
+            )
