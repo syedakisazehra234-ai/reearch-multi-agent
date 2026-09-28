@@ -34,7 +34,7 @@ def create_research_writer(llm, status_callback=None):
 
         verbose=False,
 
-        max_iter=3,
+        max_iter=1,
 
         step_callback=callback,
     )
