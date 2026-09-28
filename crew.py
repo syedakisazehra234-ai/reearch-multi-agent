@@ -7,49 +7,21 @@ from agents.web_researcher import create_web_researcher
 from agents.evidence_critic import create_evidence_critic
 from agents.research_writer import create_research_writer
 
-from tools.research_tools import (
-    AcademicSearchTool,
-    WebResearchTool,
-)
-
-
-def compact_text(text, max_chars=3500):
-
-    if text is None:
-        return ""
-
-    text = str(text)
-
-    if len(text) <= max_chars:
-        return text
-
-    return (
-        text[:max_chars]
-        + "\n\n[Additional source material omitted.]"
-    )
-
 
 def build_research_crew(status_callback=None):
 
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
     # LLM
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
 
     llm = GroqLLM(
         model="openai/gpt-oss-120b",
         temperature=0.1,
     )
 
-    # -----------------------------------------------------
-    # Tools
-    # -----------------------------------------------------
-
-    academic_tool = AcademicSearchTool()
-    web_tool = WebResearchTool()
-
-    # -----------------------------------------------------
-    # Agents
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
+    # AGENTS
+    # ---------------------------------------------------------
 
     planner = create_planner(
         llm,
@@ -58,13 +30,13 @@ def build_research_crew(status_callback=None):
 
     academic_researcher = create_academic_researcher(
         llm,
-        academic_tool,
+        None,
         status_callback
     )
 
     web_researcher = create_web_researcher(
         llm,
-        web_tool,
+        None,
         status_callback
     )
 
@@ -78,226 +50,259 @@ def build_research_crew(status_callback=None):
         status_callback
     )
 
-    # -----------------------------------------------------
-    # PLANNER
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
+    # TASK 1 — RESEARCH PLANNER
+    # ---------------------------------------------------------
 
     planning_task = Task(
         description="""
-        Research question:
+Research question:
 
-        {question}
+{question}
 
-        Create a concise research strategy.
+Create a concise research strategy.
 
-        Include:
+Include:
 
-        1. Main objective
-        2. Four focused research questions
-        3. Key concepts
-        4. Evidence requirements
-        5. Important boundaries
+1. Main objective
+2. Four focused research questions
+3. Key concepts
+4. Evidence requirements
+5. Important boundaries
 
-        Do not answer the question.
+Do not answer the research question.
 
-        Keep the output below 300 words.
-        """,
-
+Maximum: 250 words.
+""",
         expected_output=(
-            "A concise research strategy."
+            "A concise research strategy containing the "
+            "objective, focused questions, concepts, "
+            "evidence requirements, and boundaries."
         ),
-
         agent=planner,
     )
 
-    # -----------------------------------------------------
-    # ACADEMIC SEARCH
-    # -----------------------------------------------------
-
-    # The actual question is passed when kickoff() is called.
-    # The task receives a compact academic result through
-    # a placeholder supplied by the application.
-    #
-    # We therefore use a small helper task whose input
-    # contains the question and source material.
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
+    # TASK 2 — ACADEMIC RESEARCH
+    # ---------------------------------------------------------
 
     academic_task = Task(
         description="""
-        Research question:
+Research question:
 
-        {question}
+{question}
 
-        Academic literature:
+Academic source material:
 
-        {academic_sources}
+{academic_sources}
 
-        Summarize the academic evidence.
+Analyze the supplied academic source material.
 
-        For each useful source include:
+Produce a concise evidence summary.
 
-        - title
-        - authors when available
-        - year
-        - journal
-        - DOI
-        - relevance to the question
+For each useful source preserve:
 
-        Do not invent information.
+- Title
+- Authors
+- Year
+- Journal
+- DOI
+- Relevance to the research question
 
-        Keep the response concise.
-        """,
+Important rules:
 
+- Use ONLY the supplied academic source material.
+- Never invent sources.
+- Never invent study findings.
+- Never invent statistics.
+- If the supplied material is insufficient, explicitly say so.
+
+Maximum: 400 words.
+""",
         expected_output=(
-            "A concise academic evidence summary."
+            "A concise academic evidence summary based only "
+            "on the supplied academic sources."
         ),
-
         agent=academic_researcher,
     )
 
-    # -----------------------------------------------------
-    # WEB SEARCH
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
+    # TASK 3 — WEB RESEARCH
+    # ---------------------------------------------------------
 
     web_task = Task(
         description="""
-        Research question:
+Research question:
 
-        {question}
+{question}
 
-        Web research:
+Web source material:
 
-        {web_sources}
+{web_sources}
 
-        Summarize useful contextual information.
+Analyze the supplied web source material.
 
-        Include source URLs when supplied.
+Produce a concise contextual summary.
 
-        Clearly distinguish general web information
-        from academic evidence.
+For each useful source preserve:
 
-        Do not invent URLs or facts.
+- Title
+- Summary
+- URL
+- Relevance to the research question
 
-        Keep the response concise.
-        """,
+Important rules:
 
+- Use ONLY the supplied web source material.
+- Never invent sources.
+- Never invent URLs.
+- Clearly distinguish general web information
+  from academic evidence.
+- If the supplied material is insufficient, explicitly say so.
+
+Maximum: 350 words.
+""",
         expected_output=(
-            "A concise web research summary."
+            "A concise web research summary based only "
+            "on the supplied web sources."
         ),
-
         agent=web_researcher,
     )
 
-    # -----------------------------------------------------
-    # CRITIC
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
+    # TASK 4 — EVIDENCE CRITIC
+    #
+    # IMPORTANT:
+    # Do NOT use {academic_task} or {web_task}.
+    # Their outputs are supplied through context=[...].
+    # ---------------------------------------------------------
 
     critic_task = Task(
         description="""
-        Research question:
+Research question:
 
-        {question}
+{question}
 
-        Academic evidence:
+You have been provided with two research outputs
+through task context:
 
-        {academic_task}
+1. Academic Researcher output
+2. Web Researcher output
 
-        Web evidence:
+Critically evaluate those supplied outputs.
 
-        {web_task}
+Identify:
 
-        Evaluate the supplied evidence.
+- Strong evidence
+- Weak evidence
+- Unsupported claims
+- Contradictions
+- Missing evidence
+- Limitations
+- Research gaps
 
-        Identify:
+Important rules:
 
-        1. Strong evidence
-        2. Weak evidence
-        3. Unsupported claims
-        4. Contradictions
-        5. Missing evidence
-        6. Limitations
-        7. Research gaps
+- Evaluate ONLY the evidence provided in the task context.
+- Do not add new facts.
+- Do not perform additional research.
+- Do not invent citations.
+- Do not assume that a claim is true merely because it
+  appears in a source.
+- Clearly distinguish evidence from interpretation.
 
-        Do not introduce new facts.
-
-        Keep the assessment concise.
-        """,
-
+Maximum: 450 words.
+""",
         expected_output=(
-            "A concise critical evidence assessment."
+            "A concise critical assessment of the academic "
+            "and web evidence, including strengths, weaknesses, "
+            "contradictions, limitations, and research gaps."
         ),
-
         agent=evidence_critic,
 
+        # CrewAI passes the previous task outputs here.
         context=[
             academic_task,
             web_task,
         ],
     )
 
-    # -----------------------------------------------------
-    # WRITER
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
+    # TASK 5 — RESEARCH WRITER
+    #
+    # IMPORTANT:
+    # Do NOT use {critic_task}.
+    # Its output is supplied through context=[critic_task].
+    # ---------------------------------------------------------
 
     writing_task = Task(
         description="""
-        Write the final research report for:
+Write the final research report.
 
-        {question}
+Research question:
 
-        Evidence assessment:
+{question}
 
-        {critic_task}
+You have been provided with the Evidence Critic's
+assessment through task context.
 
-        Structure:
+Use that assessment together with the evidence contained
+in the preceding task context to produce a concise,
+professional research report.
 
-        # Research Report
+Structure:
 
-        ## Executive Summary
+# Research Report
 
-        ## Introduction
+## Executive Summary
 
-        ## Key Findings
+## Introduction
 
-        ## Evidence Analysis
+## Key Findings
 
-        ## Limitations
+## Evidence Analysis
 
-        ## Research Gaps
+## Limitations
 
-        ## Conclusion
+## Research Gaps
 
-        ## References
+## Conclusion
 
-        Rules:
+## References
 
-        - Use only supplied evidence.
-        - Never invent citations.
-        - Never invent statistics.
-        - Never invent URLs.
-        - Preserve supplied DOI URLs.
-        - Preserve supplied web URLs.
-        - Clearly distinguish evidence from interpretation.
-        - State important uncertainty.
-        - Keep the report professional and concise.
+Rules:
 
-        Target length: approximately 700 words.
-        """,
+- Do not invent facts.
+- Do not invent citations.
+- Do not invent statistics.
+- Do not invent URLs.
+- Preserve supplied DOI URLs.
+- Preserve supplied web URLs.
+- Distinguish evidence from interpretation.
+- Mention uncertainty where appropriate.
+- Do not claim that evidence is stronger than the supplied
+  material supports.
+- Keep the report concise.
 
+Maximum: approximately 700 words.
+""",
         expected_output=(
-            "A professional research report with references."
+            "A concise professional research report with "
+            "executive summary, introduction, key findings, "
+            "evidence analysis, limitations, research gaps, "
+            "conclusion, and references."
         ),
-
         agent=research_writer,
 
+        # CrewAI passes the critic output here.
         context=[
             critic_task,
         ],
     )
 
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
     # CREW
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
 
     return Crew(
         agents=[
