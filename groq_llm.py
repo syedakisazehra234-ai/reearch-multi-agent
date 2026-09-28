@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, ClassVar
 
 from groq import Groq
 from pydantic import PrivateAttr
@@ -10,15 +10,14 @@ class GroqLLM(BaseLLM):
 
     _client: Groq = PrivateAttr()
 
-    MAX_INPUT_CHARS = 7000
-    MAX_OUTPUT_TOKENS = 500
+    MAX_INPUT_CHARS: ClassVar[int] = 7000
+    MAX_OUTPUT_TOKENS: ClassVar[int] = 500
 
     def __init__(
         self,
-        model="openai/gpt-oss-120b",
-        temperature=0.1,
+        model: str = "openai/gpt-oss-120b",
+        temperature: float = 0.1,
     ):
-
         api_key = os.getenv("GROQ_API_KEY")
 
         if not api_key:
@@ -36,7 +35,7 @@ class GroqLLM(BaseLLM):
         )
 
     @staticmethod
-    def _clean_message(message: Any):
+    def _clean_message(message: Any) -> dict:
 
         if not isinstance(message, dict):
             return {
@@ -48,6 +47,8 @@ class GroqLLM(BaseLLM):
 
         for key, value in message.items():
 
+            # CrewAI may add provider-specific metadata
+            # that Groq does not accept.
             if key in {
                 "cache_breakpoint",
                 "provider_specific_fields",
@@ -66,32 +67,34 @@ class GroqLLM(BaseLLM):
             for message in messages
         ]
 
-        total = sum(
-            len(str(m.get("content", "")))
-            for m in cleaned
+        total_chars = sum(
+            len(str(message.get("content", "")))
+            for message in cleaned
         )
 
-        if total <= self.MAX_INPUT_CHARS:
+        if total_chars <= self.MAX_INPUT_CHARS:
             return cleaned
 
         system_messages = [
-            m for m in cleaned
-            if m.get("role") == "system"
+            message
+            for message in cleaned
+            if message.get("role") == "system"
         ]
 
         other_messages = [
-            m for m in cleaned
-            if m.get("role") != "system"
+            message
+            for message in cleaned
+            if message.get("role") != "system"
         ]
 
-        system_size = sum(
-            len(str(m.get("content", "")))
-            for m in system_messages
+        system_chars = sum(
+            len(str(message.get("content", "")))
+            for message in system_messages
         )
 
         remaining = max(
-            2500,
-            self.MAX_INPUT_CHARS - system_size
+            1500,
+            self.MAX_INPUT_CHARS - system_chars
         )
 
         selected = []
@@ -111,22 +114,25 @@ class GroqLLM(BaseLLM):
 
                 remaining -= len(content)
 
+            elif remaining > 500:
+
+                shortened = dict(message)
+
+                shortened["content"] = (
+                    content[:remaining]
+                    + "\n[Context shortened.]"
+                )
+
+                selected.insert(
+                    0,
+                    shortened
+                )
+
+                remaining = 0
+
+                break
+
             else:
-
-                if remaining > 500:
-
-                    shortened = dict(message)
-
-                    shortened["content"] = (
-                        content[:remaining]
-                        + "\n[Context shortened.]"
-                    )
-
-                    selected.insert(
-                        0,
-                        shortened
-                    )
-
                 break
 
         return system_messages + selected
@@ -166,12 +172,8 @@ class GroqLLM(BaseLLM):
             "reasoning_effort": "low",
         }
 
-        # We intentionally do NOT pass CrewAI tools here.
-        # Research tools are executed once directly in app.py.
-        #
-        # This prevents repeated tool-calling requests from
-        # exceeding the current Groq TPM limit.
-
+        # Research tools are executed directly in app.py.
+        # We intentionally do not send CrewAI tools to Groq.
         completion = (
             self._client
             .chat
@@ -187,10 +189,8 @@ class GroqLLM(BaseLLM):
             or ""
         )
 
-    def supports_function_calling(self):
-
+    def supports_function_calling(self) -> bool:
         return False
 
-    def supports_stop_words(self):
-
+    def supports_stop_words(self) -> bool:
         return False
