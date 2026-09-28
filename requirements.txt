@@ -1,0 +1,5 @@
+streamlit==1.64.0
+crewai==1.15.22
+groq==1.7.0
+requests>=2.32.0,<3.0.0
+pydantic>=2.10,<3.0
