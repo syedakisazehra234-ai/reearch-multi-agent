@@ -34,7 +34,7 @@ def create_evidence_critic(llm, status_callback=None):
 
         verbose=False,
 
-        max_iter=4,
+        max_iter=1,
 
         step_callback=callback,
     )
