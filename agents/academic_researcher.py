@@ -3,41 +3,43 @@ from crewai import Agent
 
 def create_academic_researcher(
     llm,
-    academic_tool,
+    academic_tool=None,
     status_callback=None,
 ):
 
     def callback(_step):
+
         if status_callback:
+
             status_callback(
                 "Academic Researcher",
-                "Searching scholarly literature and extracting evidence."
+                "Analyzing scholarly evidence."
             )
 
     return Agent(
         role="Academic Research Specialist",
 
         goal=(
-            "Find relevant scholarly literature for the research question. "
-            "Prioritize academic evidence, publication dates, authors, "
-            "journals and DOI information."
+            "Analyze supplied academic literature and "
+            "extract relevant evidence without inventing "
+            "sources or claims."
         ),
 
         backstory=(
             "You are a scholarly research specialist. "
-            "You distinguish academic evidence from unsupported claims "
-            "and always preserve source information."
+            "You carefully distinguish published evidence "
+            "from unsupported claims."
         ),
 
         llm=llm,
 
-        tools=[academic_tool],
+        tools=[],
 
         allow_delegation=False,
 
         verbose=False,
 
-        max_iter=5,
+        max_iter=1,
 
         step_callback=callback,
     )
