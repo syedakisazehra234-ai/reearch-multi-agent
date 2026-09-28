@@ -81,17 +81,24 @@ st.html(
     }
 
     div[data-baseweb="textarea"] {
-        background:
-            rgba(15, 23, 42, 0.75);
+    background: #ffffff !important;
+    border-radius: 14px;
+    border: 1px solid #d1d5db !important;
+}
 
-        border-radius: 14px;
-    }
+div[data-baseweb="textarea"] textarea {
+    background: #ffffff !important;
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+    caret-color: #111827 !important;
+}
 
-    textarea {
-        color: #f8fafc !important;
-        font-size: 15px !important;
-        line-height: 1.6 !important;
-    }
+div[data-baseweb="textarea"] textarea::placeholder {
+    color: #6b7280 !important;
+    opacity: 1 !important;
+}
 
     div.stButton > button {
         width: 100%;
